@@ -1,0 +1,19 @@
+{
+  "name": "solax-mcp",
+  "version": "0.0.1",
+  "private": true,
+  "description": "MCP server exposing photovoltaic (FVE) data for AI agents",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.0"
+  }
+}

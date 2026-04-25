@@ -1,0 +1,5 @@
+[mcp_servers.solax-mcp]
+command = "node"
+args = ["dist/index.js"]
+cwd = "."
+enabled = true

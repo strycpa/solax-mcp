@@ -72,6 +72,24 @@ Build the project and point your MCP client at the compiled server:
 
 Use `pnpm dev` for local development only. For MCP clients, prefer the compiled `dist/index.js` entry so stdout is reserved for MCP JSON-RPC messages.
 
+### Codex CLI
+
+This repository includes a project-local Codex configuration in `.codex/config.toml`. Codex can use it when started in this workspace:
+
+```bash
+pnpm build
+codex -C /Users/strycpa/git/mcp/solax-mcp
+```
+
+Codex loads project-local `.codex/config.toml` only for trusted projects. If the MCP server does not appear in `/mcp`, mark this repository as trusted in `~/.codex/config.toml`:
+
+```toml
+[projects."/Users/strycpa/git/mcp/solax-mcp"]
+trust_level = "trusted"
+```
+
+The MCP server process uses the repository root as its working directory, so `dotenv/config` loads local values from `.env`.
+
 ## MCP Interface
 
 ### Tools

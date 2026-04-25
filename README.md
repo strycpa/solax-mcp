@@ -90,6 +90,8 @@ trust_level = "trusted"
 
 The MCP server process uses the repository root as its working directory, so `dotenv/config` loads local values from `.env`.
 
+The project Codex configuration uses `workspace-write` sandbox mode with network access enabled because the MCP server must open a local TCP connection to the inverter at `SOLAX_MODBUS_HOST:SOLAX_MODBUS_PORT`.
+
 ## MCP Interface
 
 ### Tools

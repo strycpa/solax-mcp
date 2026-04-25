@@ -1,3 +1,8 @@
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true
+
 [mcp_servers.solax-mcp]
 command = "node"
 args = ["dist/index.js"]

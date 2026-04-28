@@ -140,6 +140,7 @@ function wordLength(dataType: RegisterDataType): number {
       return 1;
     case "u32":
     case "s32":
+    case "s32-swap":
       return 2;
   }
 }
@@ -157,6 +158,8 @@ function decodeRegisters(
       return toUnsigned32(registers);
     case "s32":
       return toSigned32(toUnsigned32(registers));
+    case "s32-swap":
+      return toSigned32(toUnsigned32([...registers].reverse()));
   }
 }
 

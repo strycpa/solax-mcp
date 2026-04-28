@@ -1,5 +1,5 @@
 export type RegisterType = "input" | "holding";
-export type RegisterDataType = "u16" | "s16" | "u32" | "s32";
+export type RegisterDataType = "u16" | "s16" | "u32" | "s32" | "s32-swap";
 
 export interface RegisterDefinition {
   key: string;
@@ -126,7 +126,7 @@ export const SOLAX_DEFAULT_REGISTER_MAP = defineRegisters([
     description: "Grid meter power. Positive values are treated as export, negative values as import.",
     address: 0x46,
     registerType: "input",
-    dataType: "s32",
+    dataType: "s32-swap",
     unit: "W",
   },
 ]);

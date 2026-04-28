@@ -26,7 +26,7 @@ server.registerTool(
   {
     title: "Get PV Status",
     description:
-      "Read the current photovoltaic system status from the SolaX inverter over Modbus TCP.",
+      "Read the current photovoltaic system status from the configured SolaX data source.",
     annotations: {
       readOnlyHint: true,
       openWorldHint: true,
@@ -40,7 +40,7 @@ server.registerTool(
   {
     title: "Get Battery SOC",
     description:
-      "Read the current PV battery state of charge from the SolaX inverter.",
+      "Read the current PV battery state of charge from the configured SolaX data source.",
     annotations: {
       readOnlyHint: true,
       openWorldHint: true,
@@ -73,7 +73,7 @@ server.registerTool(
   {
     title: "Read PV Register",
     description:
-      "Read an arbitrary Modbus register for diagnostics when verifying the inverter-specific map.",
+      "Read an arbitrary Modbus register for diagnostics when verifying the inverter-specific map. This tool always uses Modbus TCP.",
     inputSchema: {
       address: z
         .number()
@@ -81,7 +81,9 @@ server.registerTool(
         .min(0)
         .describe("Zero-based Modbus register address, e.g. 28 for 0x1C."),
       registerType: z.enum(["input", "holding"]).default("input"),
-      dataType: z.enum(["u16", "s16", "u32", "s32"]).default("u16"),
+      dataType: z
+        .enum(["u16", "s16", "u32", "s32", "s32-swap"])
+        .default("u16"),
       scale: z.number().default(1),
       precision: z.number().int().min(0).max(6).optional(),
     },
@@ -131,7 +133,7 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(
-    `solax-mcp listening on stdio; Modbus TCP ${config.SOLAX_MODBUS_HOST}:${config.SOLAX_MODBUS_PORT}, unit ${config.SOLAX_MODBUS_UNIT_ID}`,
+    `solax-mcp listening on stdio; provider ${config.PV_DATA_SOURCE}`,
   );
 }
 

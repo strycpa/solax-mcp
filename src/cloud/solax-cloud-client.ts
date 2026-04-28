@@ -37,7 +37,7 @@ const cloudResponseSchema = z
         batStatus: z.string().or(z.number()).nullish(),
       })
       .passthrough()
-      .optional(),
+      .nullish(),
   })
   .passthrough();
 
@@ -84,11 +84,11 @@ export class SolaxCloudClient {
 
       if (parsed.success === false) {
         throw new Error(
-          `SolaX Cloud API request failed: ${parsed.exception ?? "unknown error"}.`,
+          `SolaX Cloud API request failed: ${parsed.exception ?? "unknown error"}${parsed.code === undefined ? "" : ` (code ${parsed.code})`}.`,
         );
       }
 
-      if (parsed.result === undefined) {
+      if (parsed.result == null) {
         throw new Error("SolaX Cloud API response did not contain result data.");
       }
 

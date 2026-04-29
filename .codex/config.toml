@@ -7,4 +7,10 @@ network_access = true
 command = "node"
 args = ["dist/index.js"]
 cwd = "."
+env = { MCP_TRANSPORT = "stdio", PV_DATA_SOURCE = "modbus" }
+enabled = true
+
+[mcp_servers.solax-mcp-cloud]
+url = "https://solax-mcp-nanpthbczq-ew.a.run.app/mcp"
+bearer_token_env_var = "MCP_HTTP_AUTH_TOKEN"
 enabled = true

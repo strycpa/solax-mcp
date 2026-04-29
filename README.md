@@ -89,7 +89,7 @@ MCP_HTTP_AUTH_TOKEN=...
 
 When `MCP_HTTP_PORT` is not set, the server uses the platform `PORT` value. This matches Google Cloud Run's runtime contract.
 
-The HTTP server also exposes `GET /healthz` for container health checks. The health endpoint is public, but the MCP endpoint requires:
+The HTTP server also exposes `GET /health` for container health checks and `GET /healthz` as a Kubernetes-style alias. The health endpoints are public, but the MCP endpoint requires:
 
 ```http
 Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>

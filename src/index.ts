@@ -211,7 +211,7 @@ async function handleHttpRequest(
 ): Promise<void> {
   const requestPath = getRequestPath(req);
 
-  if (requestPath === "/healthz") {
+  if (requestPath === "/health" || requestPath === "/healthz") {
     writeJson(res, 200, { status: "ok" });
     return;
   }

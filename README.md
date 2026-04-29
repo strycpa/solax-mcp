@@ -45,6 +45,7 @@ Edit `.env` for your preferred data source. The `.env` file is ignored by git.
 Default values target the local SolaX inverter over Modbus:
 
 ```bash
+MCP_TRANSPORT=stdio
 PV_DATA_SOURCE=modbus
 SOLAX_INVERTER_MODEL="SolaX Hybrid G4 10k"
 SOLAX_MODBUS_HOST=192.168.68.121
@@ -56,6 +57,7 @@ SOLAX_MODBUS_TIMEOUT_MS=5000
 To use SolaX Cloud API instead:
 
 ```bash
+MCP_TRANSPORT=stdio
 PV_DATA_SOURCE=cloud
 SOLAX_CLOUD_BASE_URL=https://global.solaxcloud.com
 SOLAX_CLOUD_TOKEN_ID=...
@@ -66,6 +68,57 @@ SOLAX_CLOUD_TIMEOUT_MS=10000
 `SOLAX_CLOUD_TOKEN_ID` is generated in SolaX Cloud and is sent as the `tokenId` request header. `SOLAX_CLOUD_WIFI_SN` is the registration number of the communication module/dongle (`wifiSn` in the API body), not necessarily the inverter serial number.
 
 SolaX Cloud documents a request limit of roughly 10 calls per minute and 10,000 calls per day for `getRealtimeInfo`. Avoid aggressive polling from clients.
+
+### MCP Transport
+
+Local MCP clients should keep the default stdio transport:
+
+```bash
+MCP_TRANSPORT=stdio
+```
+
+For remote or containerized deployments, use the Streamable HTTP transport:
+
+```bash
+MCP_TRANSPORT=http
+MCP_HTTP_HOST=0.0.0.0
+MCP_HTTP_PORT=3000
+MCP_HTTP_PATH=/mcp
+MCP_HTTP_AUTH_TOKEN=...
+```
+
+When `MCP_HTTP_PORT` is not set, the server uses the platform `PORT` value. This matches Google Cloud Run's runtime contract.
+
+The HTTP server also exposes `GET /healthz` for container health checks. The health endpoint is public, but the MCP endpoint requires:
+
+```http
+Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>
+```
+
+When `PV_DATA_SOURCE=cloud`, the Modbus-only diagnostic tool `read_pv_register` is not registered because Cloud Run cannot reach the inverter on the home LAN.
+
+## Google Cloud Run
+
+This repository includes a Dockerfile for Cloud Run. The container defaults to HTTP MCP on `0.0.0.0` and reads Cloud Run's `PORT` automatically.
+
+Build and deploy from the repository root:
+
+```bash
+gcloud run deploy solax-mcp \
+  --source . \
+  --region europe-west1 \
+  --allow-unauthenticated \
+  --set-env-vars MCP_TRANSPORT=http,PV_DATA_SOURCE=cloud,SOLAX_CLOUD_BASE_URL=https://global.solaxcloud.com \
+  --set-secrets MCP_HTTP_AUTH_TOKEN=solax-mcp-http-auth-token:latest,SOLAX_CLOUD_TOKEN_ID=solax-cloud-token-id:latest,SOLAX_CLOUD_WIFI_SN=solax-cloud-wifi-sn:latest
+```
+
+The MCP endpoint will be available at:
+
+```text
+https://<cloud-run-service-url>/mcp
+```
+
+Store `MCP_HTTP_AUTH_TOKEN`, `SOLAX_CLOUD_TOKEN_ID`, and `SOLAX_CLOUD_WIFI_SN` in Secret Manager instead of plain environment variables.
 
 To debug SolaX Cloud API connectivity without the MCP transport, run:
 

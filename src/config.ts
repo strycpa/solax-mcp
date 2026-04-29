@@ -2,6 +2,11 @@ import { z } from "zod";
 
 const configSchema = z
   .object({
+    MCP_TRANSPORT: z.enum(["stdio", "http"]).default("stdio"),
+    MCP_HTTP_HOST: z.string().min(1).default("127.0.0.1"),
+    MCP_HTTP_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+    MCP_HTTP_PATH: z.string().min(1).default("/mcp"),
+    MCP_HTTP_AUTH_TOKEN: z.string().min(16).optional(),
     PV_DATA_SOURCE: z.enum(["modbus", "cloud"]).default("modbus"),
     SOLAX_INVERTER_MODEL: z.string().min(1).default("SolaX Hybrid G4 10k"),
     SOLAX_MODBUS_HOST: z.string().min(1).default("192.168.68.121"),
@@ -17,6 +22,17 @@ const configSchema = z
     SOLAX_CLOUD_TIMEOUT_MS: z.coerce.number().int().min(100).default(10000),
   })
   .superRefine((config, ctx) => {
+    if (
+      config.MCP_TRANSPORT === "http" &&
+      config.MCP_HTTP_AUTH_TOKEN === undefined
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["MCP_HTTP_AUTH_TOKEN"],
+        message: "MCP_HTTP_AUTH_TOKEN is required when MCP_TRANSPORT=http.",
+      });
+    }
+
     if (config.PV_DATA_SOURCE !== "cloud") {
       return;
     }
@@ -41,5 +57,8 @@ const configSchema = z
 export type AppConfig = z.infer<typeof configSchema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  return configSchema.parse(env);
+  return configSchema.parse({
+    ...env,
+    MCP_HTTP_PORT: env.MCP_HTTP_PORT ?? env.PORT,
+  });
 }

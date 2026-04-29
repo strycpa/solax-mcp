@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.git
+.codex
+dist
+node_modules
+docs
+scripts
+*.log

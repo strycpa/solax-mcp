@@ -1,0 +1,35 @@
+steps:
+  - id: Build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --no-cache
+      - -t
+      - ${_IMAGE}:${COMMIT_SHA}
+      - .
+      - -f
+      - Dockerfile
+
+  - id: Push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_IMAGE}:${COMMIT_SHA}
+
+  - id: Deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - ${_SERVICE_NAME}
+      - --platform=managed
+      - --image=${_IMAGE}:${COMMIT_SHA}
+      - --region=${_DEPLOY_REGION}
+      - --quiet
+
+substitutions:
+  _DEPLOY_REGION: europe-west1
+  _SERVICE_NAME: solax-mcp-chat
+  _IMAGE: europe-west1-docker.pkg.dev/solax-mcp/cloud-run-source-deploy/solax-mcp-chat/solax-mcp-chat

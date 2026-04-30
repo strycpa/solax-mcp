@@ -97,6 +97,60 @@ Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>
 
 When `PV_DATA_SOURCE=cloud`, the Modbus-only diagnostic tool `read_pv_register` is not registered because Cloud Run cannot reach the inverter on the home LAN.
 
+### Mobile Chat
+
+HTTP mode also exposes a simple mobile-friendly chat UI at:
+
+```text
+https://<cloud-run-service-url>/chat
+```
+
+The browser UI stores an access token in local storage and calls `POST /api/chat`. The API requires a bearer token. Set `CHAT_AUTH_TOKEN` to use a separate mobile-chat token, or omit it to reuse `MCP_HTTP_AUTH_TOKEN`.
+
+The chat backend uses OpenAI Chat Completions as the agent brain and calls PV tools through the public Streamable HTTP MCP endpoint. By default it connects back to this service's `MCP_HTTP_PATH`; set `CHAT_MCP_URL` to point it at a different public MCP endpoint.
+
+```bash
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4.1-mini
+# Optional; defaults to this service's /mcp endpoint.
+CHAT_MCP_URL=https://<cloud-run-service-url>/mcp
+# Optional; falls back to MCP_HTTP_AUTH_TOKEN.
+CHAT_AUTH_TOKEN=...
+```
+
+### Separate Cloud Run Chat Service
+
+For a cleaner demo topology, run the chat agent as a separate Cloud Run service that talks to the public MCP service:
+
+```text
+Mobile browser
+  -> solax-mcp-chat /chat
+  -> solax-mcp-chat /api/chat
+  -> OpenAI Chat Completions
+  -> solax-mcp /mcp
+  -> SolaX Cloud
+```
+
+This repository includes `cloudbuild.chat.yaml` for the `solax-mcp-chat` service. The configured service uses:
+
+```bash
+MCP_TRANSPORT=http
+PV_DATA_SOURCE=modbus
+CHAT_MCP_URL=https://solax-mcp-nanpthbczq-ew.a.run.app/mcp
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+And these Secret Manager values:
+
+```bash
+MCP_HTTP_AUTH_TOKEN=solax-mcp-http-auth-token:latest
+CHAT_AUTH_TOKEN=solax-chat-auth-token:latest
+# Required before the chat can answer:
+OPENAI_API_KEY=openai-api-key:latest
+```
+
+`MCP_HTTP_AUTH_TOKEN` is used by the chat agent to call the public MCP endpoint. `CHAT_AUTH_TOKEN` is the mobile browser access token.
+
 ## Google Cloud Run
 
 This repository includes a Dockerfile for Cloud Run. The container defaults to HTTP MCP on `0.0.0.0` and reads Cloud Run's `PORT` automatically.
@@ -108,8 +162,8 @@ gcloud run deploy solax-mcp \
   --source . \
   --region europe-west1 \
   --allow-unauthenticated \
-  --set-env-vars MCP_TRANSPORT=http,PV_DATA_SOURCE=cloud,SOLAX_CLOUD_BASE_URL=https://global.solaxcloud.com \
-  --set-secrets MCP_HTTP_AUTH_TOKEN=solax-mcp-http-auth-token:latest,SOLAX_CLOUD_TOKEN_ID=solax-cloud-token-id:latest,SOLAX_CLOUD_WIFI_SN=solax-cloud-wifi-sn:latest
+  --set-env-vars MCP_TRANSPORT=http,PV_DATA_SOURCE=cloud,SOLAX_CLOUD_BASE_URL=https://global.solaxcloud.com,OPENAI_MODEL=gpt-4.1-mini \
+  --set-secrets MCP_HTTP_AUTH_TOKEN=solax-mcp-http-auth-token:latest,SOLAX_CLOUD_TOKEN_ID=solax-cloud-token-id:latest,SOLAX_CLOUD_WIFI_SN=solax-cloud-wifi-sn:latest,OPENAI_API_KEY=openai-api-key:latest
 ```
 
 The MCP endpoint will be available at:
@@ -118,7 +172,7 @@ The MCP endpoint will be available at:
 https://<cloud-run-service-url>/mcp
 ```
 
-Store `MCP_HTTP_AUTH_TOKEN`, `SOLAX_CLOUD_TOKEN_ID`, and `SOLAX_CLOUD_WIFI_SN` in Secret Manager instead of plain environment variables.
+Store `MCP_HTTP_AUTH_TOKEN`, `SOLAX_CLOUD_TOKEN_ID`, `SOLAX_CLOUD_WIFI_SN`, `OPENAI_API_KEY`, and optionally `CHAT_AUTH_TOKEN` in Secret Manager instead of plain environment variables.
 
 To debug SolaX Cloud API connectivity without the MCP transport, run:
 

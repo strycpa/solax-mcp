@@ -29,6 +29,9 @@ steps:
       - --region=${_DEPLOY_REGION}
       - --quiet
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 substitutions:
   _DEPLOY_REGION: europe-west1
   _SERVICE_NAME: solax-mcp-chat

@@ -139,6 +139,19 @@ export async function handleChatRequest(
   }
 }
 
+export function handleChatAuthRequest(
+  config: AppConfig,
+  req: IncomingMessage,
+  res: ServerResponse,
+): void {
+  if (!isAuthorizedChatRequest(config, req)) {
+    writeJson(res, 401, { error: "Unauthorized" });
+    return;
+  }
+
+  writeJson(res, 200, { status: "ok" });
+}
+
 export function writeChatPage(res: ServerResponse): void {
   if (res.headersSent) {
     return;
@@ -406,6 +419,9 @@ const chatPageHtml = String.raw`<!doctype html>
         align-self: flex-start;
         background: #1e293b;
       }
+      .hidden {
+        display: none;
+      }
       form {
         display: flex;
         gap: 0.5rem;
@@ -436,6 +452,14 @@ const chatPageHtml = String.raw`<!doctype html>
   <body>
     <main>
       <h1>SolaX Chat</h1>
+      <section id="auth">
+        <div class="message assistant">Enter access token to open the chat.</div>
+        <form id="auth-form">
+          <input id="token" autocomplete="off" inputmode="text" placeholder="Access token" />
+          <button id="auth-send" type="submit">Unlock</button>
+        </form>
+      </section>
+      <section id="chat" class="hidden">
       <section id="messages">
         <div class="message assistant">Ahoj. Zeptej se na baterku, výrobu, spotřebu nebo import/export ze sítě.</div>
       </section>
@@ -443,19 +467,17 @@ const chatPageHtml = String.raw`<!doctype html>
         <input id="message" autocomplete="off" placeholder="Jak jsme na tom s baterkou?" />
         <button id="send" type="submit">Send</button>
       </form>
+      </section>
     </main>
     <script>
       const tokenKey = "solax-chat-token";
       let token = localStorage.getItem(tokenKey);
 
-      if (!token) {
-        token = prompt("Access token");
-
-        if (token) {
-          localStorage.setItem(tokenKey, token);
-        }
-      }
-
+      const auth = document.getElementById("auth");
+      const authForm = document.getElementById("auth-form");
+      const tokenInput = document.getElementById("token");
+      const authSend = document.getElementById("auth-send");
+      const chat = document.getElementById("chat");
       const form = document.getElementById("form");
       const input = document.getElementById("message");
       const send = document.getElementById("send");
@@ -467,6 +489,91 @@ const chatPageHtml = String.raw`<!doctype html>
         element.textContent = text;
         messages.appendChild(element);
         element.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+
+      function showLogin(message) {
+        token = null;
+        localStorage.removeItem(tokenKey);
+        chat.classList.add("hidden");
+        auth.classList.remove("hidden");
+
+        if (message) {
+          addAuthMessage(message);
+        }
+
+        tokenInput.focus();
+      }
+
+      function showChat() {
+        auth.classList.add("hidden");
+        chat.classList.remove("hidden");
+        input.focus();
+      }
+
+      function addAuthMessage(text) {
+        const element = document.createElement("div");
+        element.className = "message assistant";
+        element.textContent = text;
+        auth.insertBefore(element, authForm);
+      }
+
+      async function verifyToken(candidateToken) {
+        const response = await fetch("/api/chat/auth", {
+          method: "POST",
+          headers: {
+            authorization: "Bearer " + candidateToken,
+            "content-type": "application/json",
+          },
+        });
+
+        if (response.status === 401) {
+          return false;
+        }
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Token verification failed");
+        }
+
+        return true;
+      }
+
+      async function unlock(candidateToken) {
+        authSend.disabled = true;
+
+        try {
+          const isValid = await verifyToken(candidateToken);
+
+          if (!isValid) {
+            showLogin("Invalid token. Try again.");
+            return;
+          }
+
+          token = candidateToken;
+          localStorage.setItem(tokenKey, candidateToken);
+          showChat();
+        } catch (error) {
+          addAuthMessage("Verification failed: " + error.message);
+        } finally {
+          authSend.disabled = false;
+        }
+      }
+
+      authForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const candidateToken = tokenInput.value.trim();
+
+        if (!candidateToken) {
+          return;
+        }
+
+        void unlock(candidateToken);
+      });
+
+      if (token) {
+        void unlock(token);
+      } else {
+        showLogin();
       }
 
       form.addEventListener("submit", async (event) => {
@@ -491,6 +598,11 @@ const chatPageHtml = String.raw`<!doctype html>
             body: JSON.stringify({ message: text }),
           });
           const data = await response.json();
+
+          if (response.status === 401) {
+            showLogin("Invalid token. Try again.");
+            return;
+          }
 
           if (!response.ok) {
             throw new Error(data.error || "Request failed");

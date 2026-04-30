@@ -10,7 +10,11 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { handleChatRequest, writeChatPage } from "./chat.js";
+import {
+  handleChatAuthRequest,
+  handleChatRequest,
+  writeChatPage,
+} from "./chat.js";
 import { loadConfig, type AppConfig } from "./config.js";
 import {
   SOLAX_DEFAULT_REGISTER_MAP,
@@ -219,6 +223,11 @@ async function handleHttpRequest(
 
   if (requestPath === "/chat" && req.method === "GET") {
     writeChatPage(res);
+    return;
+  }
+
+  if (requestPath === "/api/chat/auth" && req.method === "POST") {
+    handleChatAuthRequest(config, req, res);
     return;
   }
 

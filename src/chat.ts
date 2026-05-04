@@ -59,7 +59,7 @@ interface ChatTool {
   };
 }
 
-const chatTools: ChatTool[] = [
+const baseChatTools: ChatTool[] = [
   {
     type: "function",
     function: {
@@ -105,6 +105,29 @@ const chatTools: ChatTool[] = [
     },
   },
 ];
+
+const queryPvHistoryChatTool: ChatTool = {
+  type: "function",
+  function: {
+    name: "query_pv_history",
+    description:
+      "Run a constrained BigQuery SELECT over minute-level pv_samples for trends and historical analytics. SQL must reference pv_samples only and MUST include sampled_date in WHERE (partition requirement). Do not use semicolons, backticks, comments, or UNION. Prefer aggregates by hour/day and filters on sampled_at ranges inside valid sampled_date windows. Combine results with get_pv_status for current conditions.",
+    parameters: {
+      type: "object",
+      properties: {
+        sql: {
+          type: "string",
+          description:
+            "BigQuery Standard SQL SELECT reading pv_samples with sampled_date predicate.",
+        },
+      },
+      required: ["sql"],
+      additionalProperties: false,
+    },
+  },
+};
+
+const chatTools: ChatTool[] = [...baseChatTools, queryPvHistoryChatTool];
 
 export async function handleChatRequest(
   config: AppConfig,
@@ -170,7 +193,7 @@ async function answerChatMessage(
     {
       role: "system",
       content:
-        "You are a concise home photovoltaic assistant. Answer in Czech. Use the available MCP tools when the user asks about current PV, battery, grid or inverter state. Explain the values in practical household terms.",
+        "You are a concise home photovoltaic assistant. Answer in Czech. Use the available MCP tools when the user asks about current PV, battery, grid or inverter state. When the question depends on trends across hours or days (for example laundry timing from typical load spikes, how many overnight cycles might fit, or rough multi-day off-grid outlooks), call query_pv_history with descriptive aggregates over pv_samples inside explicit sampled_date bounds, then reconcile with get_pv_status for up-to-date measurements. Explain values in practical household terms and spell out uncertainty where data is incomplete.",
     },
     {
       role: "user",

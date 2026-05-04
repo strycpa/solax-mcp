@@ -14,6 +14,18 @@ Table: pv_samples
 `pv_samples` is partitioned by `sampled_date` and clustered by `source_provider`.
 Historical MCP tools should always require an explicit time range so BigQuery can prune partitions.
 
+## MCP: flexible historical SELECT (`query_pv_history`)
+
+When `BIGQUERY_PROJECT_ID`, `BIGQUERY_DATASET_ID`, `BIGQUERY_LOCATION`, and `BIGQUERY_SAMPLES_TABLE_ID` are set at MCP startup, the server registers **`query_pv_history`**: a constrained BigQuery Standard SQL `SELECT` over minute samples.
+
+Design intent:
+
+- **More expressive than fixed dashboards**: the agent can shape GROUP BY, window-ish aggregates, percentiles (via `APPROX_QUANTILES`), hour-of-day profiles, spike hunting on `home_load_power_w`, SOC bands, etc.—enough headroom for questions like laundry timing or rough multi-day outlooks when paired with **`get_pv_status`** for “now”.
+- **Safer than arbitrary warehouse SQL**: only reads **`pv_samples`** (you write that logical name; the server rewrites it to the configured physical table). Queries must reference **`sampled_date`** (partition filter required by the table). Semicolons, backticks, comments, `UNION`, DDL/DML, and several other constructs are rejected. A clamped **`LIMIT`** is enforced server-side (default 500 rows if omitted, hard max 5000).
+- **Cost guardrail**: optional env **`BIGQUERY_HISTORY_MAX_BYTES_BILLED`** caps billed bytes per query (default ~512 MiB).
+
+Column-oriented hints live in MCP resource **`pv://history-guide`** (JSON).
+
 ## Setup
 
 Enable BigQuery:
@@ -139,5 +151,3 @@ Each row is one normalized PV snapshot:
 - `sampled_date`: UTC date used for partitioning.
 - summary columns such as `battery_soc_percent`, `pv_power_total_w`, `grid_import_power_w`.
 - `raw_status`: full normalized `PvStatus` JSON for diagnostics and future backfills.
-
-The next implementation step is a periodic Cloud Run ingestion unit that calls SolaX Cloud once per minute and inserts a row into `pv_history.pv_samples`.

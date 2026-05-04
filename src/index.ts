@@ -16,7 +16,13 @@ import {
   writeChatPage,
 } from "./chat.js";
 import { loadConfig, type AppConfig } from "./config.js";
+import { tryLoadBigQueryHistoryConfig } from "./history/bigquery-config.js";
+import { BigQueryPvHistoryReader } from "./history/bigquery-pv-history-reader.js";
 import { handleBigQueryIngestRequest } from "./history/ingest-http.js";
+import { PV_HISTORY_GUIDE_TEXT } from "./history/pv-history-resource.js";
+import {
+  preparePvHistorySelectQuery,
+} from "./history/pv-history-sql-sandbox.js";
 import {
   SOLAX_DEFAULT_REGISTER_MAP,
   type SolaxFieldKey,
@@ -30,6 +36,9 @@ interface HttpSession {
   server: McpServer;
   transport: StreamableHTTPServerTransport;
 }
+
+const PV_HISTORY_QUERY_MAX_ROWS = 5000;
+const PV_HISTORY_QUERY_DEFAULT_LIMIT = 500;
 
 function createSolaxMcpServer(config: AppConfig): McpServer {
   const solaxService = new SolaxService(config);
@@ -126,6 +135,85 @@ function createSolaxMcpServer(config: AppConfig): McpServer {
           await client.close();
         }
       },
+    );
+  }
+
+  const bigQueryHistory = tryLoadBigQueryHistoryConfig();
+
+  if (bigQueryHistory !== undefined) {
+    const pvHistoryReader = new BigQueryPvHistoryReader(bigQueryHistory);
+    const fqTableLabel = `${bigQueryHistory.projectId}.${bigQueryHistory.datasetId}.${bigQueryHistory.samplesTableId}`;
+
+    server.registerTool(
+      "query_pv_history",
+      {
+        title: "Query PV History (BigQuery)",
+        description:
+          `Run a constrained BigQuery SELECT against minute-level PV samples. Reference ONLY the logical table name pv_samples (rewritten server-side to ${fqTableLabel}). This physical table is partitioned with require_partition_filter — include sampled_date in WHERE (for example BETWEEN two DATE literals). Columns include sampled_at, sampled_date, battery_soc_percent, battery_power_w, pv_power_total_w, grid_import_power_w, grid_export_power_w, home_load_power_w, inverter_power_w, inverter_temperature_c, raw_status JSON, plus provider metadata. Use plain identifiers: no backticks, no comments, no semicolons, and no UNION/DDL/DML. Combine with get_pv_status for present-tense answers. Typical patterns: percentile/AVG load by hour-of-day, detect high home_load_power_w runs, SOC trajectories, energy-like proxies using watts over minute buckets.`,
+        inputSchema: {
+          sql: z
+            .string()
+            .min(1)
+            .max(32000)
+            .describe(
+              'BigQuery Standard SQL SELECT that reads pv_samples with a sampled_date predicate.',
+            ),
+        },
+        annotations: {
+          readOnlyHint: true,
+          openWorldHint: true,
+        },
+      },
+      async ({ sql }) => {
+        const prepared = preparePvHistorySelectQuery({
+          sql,
+          tableId: {
+            projectId: bigQueryHistory.projectId,
+            datasetId: bigQueryHistory.datasetId,
+            tableId: bigQueryHistory.samplesTableId,
+          },
+          maxRows: PV_HISTORY_QUERY_MAX_ROWS,
+          defaultLimit: PV_HISTORY_QUERY_DEFAULT_LIMIT,
+        });
+
+        if (!prepared.ok) {
+          return textToolError(prepared.error);
+        }
+
+        try {
+          const queryResult = await pvHistoryReader.query(prepared.sql);
+
+          return jsonToolResult({
+            rowCount: queryResult.rows.length,
+            jobId: queryResult.jobId,
+            totalBytesProcessed: queryResult.totalBytesProcessed,
+            rows: queryResult.rows,
+          });
+        } catch (error: unknown) {
+          console.error("BigQuery PV history query failed:", error);
+          return textToolError(formatPvHistoryQueryFailure(error));
+        }
+      },
+    );
+
+    server.registerResource(
+      "pv_history_guide",
+      "pv://history-guide",
+      {
+        title: "PV History Guide",
+        description:
+          "Schema hints and analytical guidance for query_pv_history against pv_samples.",
+        mimeType: "application/json",
+      },
+      (uri) => ({
+        contents: [
+          {
+            uri: uri.href,
+            mimeType: "application/json",
+            text: PV_HISTORY_GUIDE_TEXT,
+          },
+        ],
+      }),
     );
   }
 
@@ -365,6 +453,26 @@ function jsonToolResult(data: object): CallToolResult {
       },
     ],
   };
+}
+
+function textToolError(message: string): CallToolResult {
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: message,
+      },
+    ],
+  };
+}
+
+function formatPvHistoryQueryFailure(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "BigQuery query failed.";
 }
 
 function registerKeys(): [SolaxFieldKey, ...SolaxFieldKey[]] {

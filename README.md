@@ -2,7 +2,7 @@
 
 `solax-mcp` is a TypeScript [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for reading live **photovoltaic (PV)** data from a **SolaX Hybrid G4 10k** inverter.
 
-The server is intentionally read-only. It does not persist measurements and every tool call reads current values from the configured data source: local Modbus TCP or SolaX Cloud API.
+The server does not issue inverter control commands. Live PV tools read current values from the configured data source (local Modbus TCP or SolaX Cloud API). Optional BigQuery ingestion stores minute samples separately; when configured, MCP exposes **`query_pv_history`** for constrained analytical SELECTs over that history.
 
 ## Capabilities
 
@@ -13,6 +13,7 @@ The server is intentionally read-only. It does not persist measurements and ever
 - Read any known normalized field from the configured data source.
 - Read arbitrary Modbus registers for diagnostics and mapping verification.
 - Expose the active register map as an MCP resource.
+- Optionally query minute-level PV history in BigQuery via **`query_pv_history`** (requires BigQuery env vars and IAM).
 
 ## Requirements
 

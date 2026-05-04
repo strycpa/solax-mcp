@@ -26,3 +26,20 @@ export function loadBigQueryHistoryConfig(
     samplesTableId: config.BIGQUERY_SAMPLES_TABLE_ID,
   };
 }
+
+export function tryLoadBigQueryHistoryConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): BigQueryHistoryConfig | undefined {
+  const result = bigQueryConfigSchema.safeParse(env);
+
+  if (!result.success) {
+    return undefined;
+  }
+
+  return {
+    projectId: result.data.BIGQUERY_PROJECT_ID,
+    datasetId: result.data.BIGQUERY_DATASET_ID,
+    location: result.data.BIGQUERY_LOCATION,
+    samplesTableId: result.data.BIGQUERY_SAMPLES_TABLE_ID,
+  };
+}

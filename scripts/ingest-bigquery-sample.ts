@@ -2,12 +2,7 @@ import "dotenv/config";
 
 import { loadConfig } from "../src/config.js";
 import { loadBigQueryHistoryConfig } from "../src/history/bigquery-config.js";
-import { BigQueryPvHistoryWriter } from "../src/history/bigquery-pv-history-writer.js";
-import {
-  pvSampleInsertId,
-  toPvSampleRow,
-} from "../src/history/pv-sample-row.js";
-import { SolaxService } from "../src/solax-service.js";
+import { ingestPvSample } from "../src/history/ingest-pv-sample.js";
 
 async function main(): Promise<void> {
   const config = loadConfig({
@@ -15,24 +10,19 @@ async function main(): Promise<void> {
     PV_DATA_SOURCE: "cloud",
   });
   const bigQueryConfig = loadBigQueryHistoryConfig();
-  const solaxService = new SolaxService(config);
-  const status = await solaxService.readStatus();
-  const row = toPvSampleRow(status);
-  const writer = new BigQueryPvHistoryWriter(bigQueryConfig);
-  const result = await writer.insertSample(row);
+  const result = await ingestPvSample(config, bigQueryConfig);
 
   console.log(
     JSON.stringify(
       {
         table: result.table,
         insertId: result.insertId,
-        sampledAt: row.sampled_at,
-        sourceProvider: row.source_provider,
-        batterySocPercent: row.battery_soc_percent,
-        pvPowerTotalW: row.pv_power_total_w,
-        gridImportPowerW: row.grid_import_power_w,
-        gridExportPowerW: row.grid_export_power_w,
-        expectedInsertId: pvSampleInsertId(row),
+        sampledAt: result.sampledAt,
+        sourceProvider: result.sourceProvider,
+        batterySocPercent: result.batterySocPercent,
+        pvPowerTotalW: result.pvPowerTotalW,
+        gridImportPowerW: result.gridImportPowerW,
+        gridExportPowerW: result.gridExportPowerW,
       },
       null,
       2,

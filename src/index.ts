@@ -16,6 +16,7 @@ import {
   writeChatPage,
 } from "./chat.js";
 import { loadConfig, type AppConfig } from "./config.js";
+import { handleBigQueryIngestRequest } from "./history/ingest-http.js";
 import {
   SOLAX_DEFAULT_REGISTER_MAP,
   type SolaxFieldKey,
@@ -233,6 +234,11 @@ async function handleHttpRequest(
 
   if (requestPath === "/api/chat" && req.method === "POST") {
     await handleChatRequest(config, req, res);
+    return;
+  }
+
+  if (requestPath === "/internal/ingest/bigquery" && req.method === "POST") {
+    await handleBigQueryIngestRequest(config, req, res);
     return;
   }
 

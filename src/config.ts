@@ -9,6 +9,7 @@ const configSchema = z
     MCP_HTTP_AUTH_TOKEN: z.string().min(16).optional(),
     CHAT_AUTH_TOKEN: z.string().min(16).optional(),
     CHAT_MCP_URL: z.string().url().optional(),
+    INGEST_AUTH_TOKEN: z.string().min(16).optional(),
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().min(1).default("gpt-4.1-mini"),
     PV_DATA_SOURCE: z.enum(["modbus", "cloud"]).default("modbus"),

@@ -75,6 +75,46 @@ The streaming insert uses an insert ID in this format:
 
 BigQuery streaming inserts use insert IDs for best-effort deduplication. The scheduled ingestion step should still tolerate occasional duplicate rows in downstream queries.
 
+## Scheduled Ingest
+
+HTTP mode exposes a protected endpoint for scheduled ingestion:
+
+```text
+POST /internal/ingest/bigquery
+Authorization: Bearer <INGEST_AUTH_TOKEN>
+```
+
+The endpoint uses the same ingestion code as `pnpm ingest:bigquery`, forces `PV_DATA_SOURCE=cloud`, and writes one current sample to BigQuery.
+
+Cloud Run needs:
+
+```bash
+BIGQUERY_PROJECT_ID=solax-mcp
+BIGQUERY_DATASET_ID=pv_history
+BIGQUERY_LOCATION=EU
+BIGQUERY_SAMPLES_TABLE_ID=pv_samples
+INGEST_AUTH_TOKEN=...
+```
+
+Cloud Scheduler can call the endpoint every minute:
+
+```bash
+gcloud scheduler jobs create http solax-mcp-ingest-minute \
+  --location=europe-west1 \
+  --schedule="* * * * *" \
+  --time-zone="Etc/UTC" \
+  --uri="https://solax-mcp-nanpthbczq-ew.a.run.app/internal/ingest/bigquery" \
+  --http-method=POST \
+  --headers="Authorization=Bearer <INGEST_AUTH_TOKEN>"
+```
+
+Keep the scheduler paused until the Cloud Run revision containing `/internal/ingest/bigquery` is deployed:
+
+```bash
+gcloud scheduler jobs pause solax-mcp-ingest-minute --location=europe-west1
+gcloud scheduler jobs resume solax-mcp-ingest-minute --location=europe-west1
+```
+
 ## Runtime IAM
 
 The Cloud Run runtime service account needs permission to create query/load jobs and write rows:

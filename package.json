@@ -13,6 +13,7 @@
     "debug:cloud": "tsx scripts/debug-solax-cloud.ts",
     "debug:modbus": "tsx scripts/debug-solax-modbus.ts",
     "dev": "tsx watch src/index.ts",
+    "migrate:bigquery": "tsx scripts/migrate-bigquery.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

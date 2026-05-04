@@ -1,0 +1,122 @@
+[
+  {
+    "name": "sampled_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "Timestamp reported or assigned to the PV sample."
+  },
+  {
+    "name": "sampled_date",
+    "type": "DATE",
+    "mode": "REQUIRED",
+    "description": "UTC date derived from sampled_at for partition pruning."
+  },
+  {
+    "name": "ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED",
+    "description": "Timestamp when the sample was written to BigQuery."
+  },
+  {
+    "name": "source_provider",
+    "type": "STRING",
+    "mode": "REQUIRED",
+    "description": "Data source provider, for example cloud or modbus."
+  },
+  {
+    "name": "inverter_model",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "Configured inverter model."
+  },
+  {
+    "name": "cloud_base_url",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "SolaX Cloud API base URL used for the sample."
+  },
+  {
+    "name": "cloud_wifi_sn",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "SolaX Cloud WiFi/dongle serial number used for the sample."
+  },
+  {
+    "name": "battery_soc_percent",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Battery state of charge in percent."
+  },
+  {
+    "name": "battery_power_w",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Battery power in watts."
+  },
+  {
+    "name": "battery_voltage_v",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Battery voltage in volts."
+  },
+  {
+    "name": "battery_current_a",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Battery current in amperes."
+  },
+  {
+    "name": "pv_power_total_w",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Total PV power in watts."
+  },
+  {
+    "name": "grid_export_power_w",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Grid export power in watts."
+  },
+  {
+    "name": "grid_import_power_w",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Grid import power in watts."
+  },
+  {
+    "name": "home_load_power_w",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Estimated home load power in watts."
+  },
+  {
+    "name": "inverter_power_w",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Inverter AC power in watts."
+  },
+  {
+    "name": "inverter_temperature_c",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Inverter temperature in degrees Celsius."
+  },
+  {
+    "name": "inverter_voltage_v",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Inverter voltage in volts."
+  },
+  {
+    "name": "inverter_frequency_hz",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Inverter frequency in hertz."
+  },
+  {
+    "name": "raw_status",
+    "type": "JSON",
+    "mode": "NULLABLE",
+    "description": "Full normalized PvStatus payload for future backfills and diagnostics."
+  }
+]

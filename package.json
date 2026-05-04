@@ -13,6 +13,7 @@
     "debug:cloud": "tsx scripts/debug-solax-cloud.ts",
     "debug:modbus": "tsx scripts/debug-solax-modbus.ts",
     "dev": "tsx watch src/index.ts",
+    "ingest:bigquery": "tsx scripts/ingest-bigquery-sample.ts",
     "migrate:bigquery": "tsx scripts/migrate-bigquery.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit"
@@ -23,6 +24,7 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.3.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.2",
     "modbus-serial": "^8.0.25",

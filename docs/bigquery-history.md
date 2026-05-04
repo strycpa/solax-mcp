@@ -28,6 +28,7 @@ Configure the explicit migration target:
 BIGQUERY_PROJECT_ID=solax-mcp
 BIGQUERY_DATASET_ID=pv_history
 BIGQUERY_LOCATION=EU
+BIGQUERY_SAMPLES_TABLE_ID=pv_samples
 ```
 
 Run schema migrations:
@@ -46,7 +47,33 @@ Applied migration files are immutable. If a migration was already applied and it
 
 The current table schema is also available as `bigquery/pv_samples.schema.json` for inspection and `bq mk` compatibility.
 
-The migration runner requires these BigQuery environment variables and intentionally does not fall back to implicit defaults.
+The migration runner requires `BIGQUERY_PROJECT_ID`, `BIGQUERY_DATASET_ID`, and `BIGQUERY_LOCATION` and intentionally does not fall back to implicit defaults.
+
+## Manual Ingest
+
+Run one SolaX Cloud sample ingestion locally:
+
+```bash
+pnpm ingest:bigquery
+```
+
+Local ingestion uses Google Application Default Credentials through the BigQuery Node client. If local BigQuery authentication fails, refresh ADC:
+
+```bash
+gcloud auth application-default login
+```
+
+Cloud Run will use the runtime service account instead.
+
+The script forces `PV_DATA_SOURCE=cloud`, reads the current normalized `PvStatus`, rounds `sampled_at` down to the current minute, and streams one row into `BIGQUERY_SAMPLES_TABLE_ID`.
+
+The streaming insert uses an insert ID in this format:
+
+```text
+<source_provider>:<sampled_at>
+```
+
+BigQuery streaming inserts use insert IDs for best-effort deduplication. The scheduled ingestion step should still tolerate occasional duplicate rows in downstream queries.
 
 ## Runtime IAM
 

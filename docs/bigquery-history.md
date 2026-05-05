@@ -115,7 +115,7 @@ gcloud scheduler jobs create http solax-mcp-ingest-minute \
   --location=europe-west1 \
   --schedule="* * * * *" \
   --time-zone="Etc/UTC" \
-  --uri="https://solax-mcp-nanpthbczq-ew.a.run.app/internal/ingest/bigquery" \
+  --uri="https://<YOUR_SOLAX_MCP_CLOUD_RUN_URL>/internal/ingest/bigquery" \
   --http-method=POST \
   --headers="Authorization=Bearer <INGEST_AUTH_TOKEN>"
 ```

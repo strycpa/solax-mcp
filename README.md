@@ -108,13 +108,17 @@ https://<cloud-run-service-url>/chat
 
 The browser UI stores an access token in local storage and calls `POST /api/chat`. The API requires a bearer token. Set `CHAT_AUTH_TOKEN` to use a separate mobile-chat token, or omit it to reuse `MCP_HTTP_AUTH_TOKEN`.
 
-The chat backend uses OpenAI Chat Completions as the agent brain and calls PV tools through the public Streamable HTTP MCP endpoint. By default it connects back to this service's `MCP_HTTP_PATH`; set `CHAT_MCP_URL` to point it at a different public MCP endpoint.
+The chat backend uses OpenAI Chat Completions as the agent brain and calls PV tools through the Streamable HTTP MCP endpoint.
+
+When **chat and MCP share one Cloud Run service** (your UI at `https://…/chat` and MCP at `https://…/mcp` on the same host), you normally **omit `CHAT_MCP_URL`**: the server builds `https://<incoming-host>/mcp` from `Host` and `X-Forwarded-Proto`.
+
+When chat runs as a **separate** Cloud Run service (`solax-mcp-chat`), **set `CHAT_MCP_URL`** to the MCP service origin plus path (see below); otherwise tool calls incorrectly target the chat hostname.
 
 ```bash
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4.1-mini
-# Optional; defaults to this service's /mcp endpoint.
-CHAT_MCP_URL=https://<cloud-run-service-url>/mcp
+# Required only when MCP lives on another host than this chat service:
+# CHAT_MCP_URL=https://<solax-mcp-cloud-run-url>/mcp
 # Optional; falls back to MCP_HTTP_AUTH_TOKEN.
 CHAT_AUTH_TOKEN=...
 ```
@@ -137,7 +141,7 @@ This repository includes `cloudbuild.chat.yaml` for the `solax-mcp-chat` service
 ```bash
 MCP_TRANSPORT=http
 PV_DATA_SOURCE=modbus
-CHAT_MCP_URL=https://solax-mcp-nanpthbczq-ew.a.run.app/mcp
+CHAT_MCP_URL=https://<solax-mcp-cloud-run-url>/mcp
 OPENAI_MODEL=gpt-4.1-mini
 ```
 

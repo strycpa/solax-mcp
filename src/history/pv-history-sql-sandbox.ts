@@ -85,10 +85,14 @@ function enforceLimitClause(
   return `${sql.slice(0, limitMatch.index).trimEnd()}\nLIMIT ${capped}${offsetSuffix}`;
 }
 
+function normalizeTypicalPvHistoryTypos(sql: string): string {
+  return sql.replace(/\bbattery_soc\b/gi, "battery_soc_percent");
+}
+
 export function preparePvHistorySelectQuery(
   options: PreparePvHistoryQueryOptions,
 ): PreparePvHistoryQueryResult {
-  const trimmed = options.sql.trim();
+  const trimmed = normalizeTypicalPvHistoryTypos(options.sql.trim());
 
   if (trimmed.length === 0) {
     return { ok: false, error: "SQL query is empty." };

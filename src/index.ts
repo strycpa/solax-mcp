@@ -19,7 +19,10 @@ import { loadConfig, type AppConfig } from "./config.js";
 import { tryLoadBigQueryHistoryConfig } from "./history/bigquery-config.js";
 import { BigQueryPvHistoryReader } from "./history/bigquery-pv-history-reader.js";
 import { handleBigQueryIngestRequest } from "./history/ingest-http.js";
-import { PV_HISTORY_GUIDE_TEXT } from "./history/pv-history-resource.js";
+import {
+  PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
+  PV_HISTORY_GUIDE_TEXT,
+} from "./history/pv-history-resource.js";
 import {
   preparePvHistorySelectQuery,
 } from "./history/pv-history-sql-sandbox.js";
@@ -149,14 +152,19 @@ function createSolaxMcpServer(config: AppConfig): McpServer {
       {
         title: "Query PV History (BigQuery)",
         description:
-          `Run a constrained BigQuery SELECT against minute-level PV samples. Reference ONLY the logical table name pv_samples (rewritten server-side to ${fqTableLabel}). This physical table is partitioned with require_partition_filter — include sampled_date in WHERE (for example BETWEEN two DATE literals). Columns include sampled_at, sampled_date, battery_soc_percent, battery_power_w, pv_power_total_w, grid_import_power_w, grid_export_power_w, home_load_power_w, inverter_power_w, inverter_temperature_c, raw_status JSON, plus provider metadata. Use plain identifiers: no backticks, no comments, no semicolons, and no UNION/DDL/DML. Combine with get_pv_status for present-tense answers. Typical patterns: percentile/AVG load by hour-of-day, detect high home_load_power_w runs, SOC trajectories, energy-like proxies using watts over minute buckets.`,
+          [
+            `Run a constrained BigQuery SELECT against minute-level PV samples. Reference ONLY the logical table name pv_samples (rewritten server-side to ${fqTableLabel}). Partitioned table: include sampled_date in WHERE. Use plain identifiers (no backticks, comments, semicolons, UNION, DDL/DML). Combine with get_pv_status for present-tense answers.`,
+            "",
+            "pv_samples columns — purposes:",
+            PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
+          ].join("\n"),
         inputSchema: {
           sql: z
             .string()
             .min(1)
             .max(32000)
             .describe(
-              'BigQuery Standard SQL SELECT that reads pv_samples with a sampled_date predicate.',
+              "BigQuery Standard SQL SELECT on pv_samples with sampled_date predicate; column meanings are in the tool description text.",
             ),
         },
         annotations: {

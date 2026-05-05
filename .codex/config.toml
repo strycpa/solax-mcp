@@ -11,6 +11,6 @@ env = { MCP_TRANSPORT = "stdio", PV_DATA_SOURCE = "modbus" }
 enabled = true
 
 [mcp_servers.solax-mcp-cloud]
-url = "https://solax-mcp-nanpthbczq-ew.a.run.app/mcp"
+url = "https://solax-mcp-594830525643.europe-west1.run.app/mcp"
 bearer_token_env_var = "MCP_HTTP_AUTH_TOKEN"
 enabled = true

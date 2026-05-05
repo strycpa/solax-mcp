@@ -6,6 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { z } from "zod";
 
 import type { AppConfig } from "./config.js";
+import { PV_HISTORY_COLUMN_USAGE_FOR_MODEL } from "./history/pv-history-resource.js";
 
 const chatRequestSchema = z.object({
   message: z.string().trim().min(1).max(2000),
@@ -111,14 +112,14 @@ const queryPvHistoryChatTool: ChatTool = {
   function: {
     name: "query_pv_history",
     description:
-      "Run a constrained BigQuery SELECT over minute-level pv_samples for trends and historical analytics. SQL must reference pv_samples only and MUST include sampled_date in WHERE (partition requirement). Do not use semicolons, backticks, comments, or UNION. Prefer aggregates by hour/day and filters on sampled_at ranges inside valid sampled_date windows. Combine results with get_pv_status for current conditions.",
+      "Run a constrained BigQuery SELECT over minute-level pv_samples for trends and historical analytics. SQL must reference pv_samples only and MUST include sampled_date in WHERE (partition requirement). SOC column must be battery_soc_percent exactly — never battery_soc. Use column meanings from the system message (same list as MCP resource pv://history-guide). Do not use semicolons, backticks, comments, or UNION. Prefer aggregates by hour/day and filters on sampled_at ranges inside valid sampled_date windows. Combine results with get_pv_status for current conditions.",
     parameters: {
       type: "object",
       properties: {
         sql: {
           type: "string",
           description:
-            "BigQuery Standard SQL SELECT reading pv_samples with sampled_date predicate.",
+            "BigQuery Standard SQL SELECT on pv_samples with sampled_date predicate; use exact column names described in the system message.",
         },
       },
       required: ["sql"],
@@ -192,8 +193,12 @@ async function answerChatMessage(
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content:
-        "You are a concise home photovoltaic assistant. Answer in Czech. Use the available MCP tools when the user asks about current PV, battery, grid or inverter state. When the question depends on trends across hours or days (for example laundry timing from typical load spikes, how many overnight cycles might fit, or rough multi-day off-grid outlooks), call query_pv_history with descriptive aggregates over pv_samples inside explicit sampled_date bounds, then reconcile with get_pv_status for up-to-date measurements. Explain values in practical household terms and spell out uncertainty where data is incomplete.",
+      content: [
+        "You are a concise home photovoltaic assistant. Answer in Czech. Use the available MCP tools when the user asks about current PV, battery, grid or inverter state. When the question depends on trends across hours or days (for example laundry timing from typical load spikes, how many overnight cycles might fit, or rough multi-day off-grid outlooks), call query_pv_history with descriptive aggregates over pv_samples inside explicit sampled_date bounds, then reconcile with get_pv_status for up-to-date measurements. In historical SQL use exact BigQuery column names from the schema (especially battery_soc_percent for SOC — there is no battery_soc column). If a tool returns an error message, quote or explain it briefly instead of claiming data does not exist. Explain values in practical household terms and spell out uncertainty where data is incomplete.",
+        "",
+        "pv_samples columns — what each is for when writing query_pv_history SQL:",
+        PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
+      ].join("\n"),
     },
     {
       role: "user",

@@ -56,6 +56,10 @@ function replacePvSamplesTable(sql: string, fqQuoted: string): string {
   return sql.replace(/\bpv_samples\b/gi, fqQuoted);
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function enforceLimitClause(
   sql: string,
   maxRows: number,
@@ -124,8 +128,12 @@ export function preparePvHistorySelectQuery(
 
   const fqQuoted = quoteFqTable(options.tableId);
   const rewritten = replacePvSamplesTable(trimmed, fqQuoted);
+  const rewrittenWithoutInjectedTable = rewritten.replace(
+    new RegExp(escapeRegExp(fqQuoted), "g"),
+    "",
+  );
 
-  if (/\bpv_samples\b/i.test(rewritten)) {
+  if (/\bpv_samples\b/i.test(rewrittenWithoutInjectedTable)) {
     return {
       ok: false,
       error:

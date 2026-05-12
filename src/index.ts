@@ -20,6 +20,7 @@ import { tryLoadBigQueryHistoryConfig } from "./history/bigquery-config.js";
 import { BigQueryPvHistoryReader } from "./history/bigquery-pv-history-reader.js";
 import { handleBigQueryIngestRequest } from "./history/ingest-http.js";
 import {
+  PV_HISTORY_AGGREGATION_GUIDANCE_FOR_MODEL,
   PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
   PV_HISTORY_GUIDE_TEXT,
 } from "./history/pv-history-resource.js";
@@ -153,10 +154,13 @@ function createSolaxMcpServer(config: AppConfig): McpServer {
         title: "Query PV History (BigQuery)",
         description:
           [
-            `Run a constrained BigQuery SELECT against minute-level PV samples. Reference ONLY the logical table name pv_samples (rewritten server-side to ${fqTableLabel}). Partitioned table: include sampled_date in WHERE. Use plain identifiers (no backticks, comments, semicolons, UNION, DDL/DML). Combine with get_pv_status for present-tense answers.`,
+            `Run a constrained BigQuery SELECT against minute-level PV samples. Reference ONLY the logical table name pv_samples (rewritten server-side to ${fqTableLabel}). Partitioned table: include sampled_date in WHERE. Use plain identifiers (no backticks, comments, semicolons, UNION, DDL/DML). Dedupe rows that share sampled_at before SUM over *_w power fields, or aggregate with AVG per bucket; power is watts, not watthours. Combine with get_pv_status for present-tense answers.`,
             "",
             "pv_samples columns — purposes:",
             PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
+            "",
+            "Aggregates, duplicates, power vs energy:",
+            PV_HISTORY_AGGREGATION_GUIDANCE_FOR_MODEL,
           ].join("\n"),
         inputSchema: {
           sql: z

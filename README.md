@@ -70,6 +70,17 @@ SOLAX_CLOUD_TIMEOUT_MS=10000
 
 SolaX Cloud documents a request limit of roughly 10 calls per minute and 10,000 calls per day for `getRealtimeInfo`. Avoid aggressive polling from clients.
 
+**BigQuery `pv_samples`:** Rows can land **irregularly in time** (bursts, retries, overlapping polls). The same logical minute may therefore appear **more than once** for a given `sampled_at`. For aggregates over power columns (`*_w`), treat deduplication as **mandatory** when a single timestamp must contribute once: naive `SUM` across all rows multiplies contributions. Use an explicit pick per key, for example with BigQuery **`QUALIFY`** and a window:
+
+```sql
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY sampled_at
+  ORDER BY ingested_at DESC
+) = 1
+```
+
+(You can partition by a coarser bucket, e.g. `TIMESTAMP_TRUNC(sampled_at, MINUTE)`, if your analysis defines “one value per minute” that way.) More context lives in `query_pv_history` / `pv://history-guide`.
+
 ### MCP Transport
 
 Local MCP clients should keep the default stdio transport:
@@ -116,7 +127,7 @@ When chat runs as a **separate** Cloud Run service (`solax-mcp-chat`), **set `CH
 
 ```bash
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-4.1
 # Required only when MCP lives on another host than this chat service:
 # CHAT_MCP_URL=https://<solax-mcp-cloud-run-url>/mcp
 # Optional; falls back to MCP_HTTP_AUTH_TOKEN.
@@ -142,7 +153,7 @@ This repository includes `cloudbuild.chat.yaml` for the `solax-mcp-chat` service
 MCP_TRANSPORT=http
 PV_DATA_SOURCE=modbus
 CHAT_MCP_URL=https://<solax-mcp-cloud-run-url>/mcp
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-4.1
 ```
 
 And these Secret Manager values:
@@ -167,7 +178,7 @@ gcloud run deploy solax-mcp \
   --source . \
   --region europe-west1 \
   --allow-unauthenticated \
-  --set-env-vars MCP_TRANSPORT=http,PV_DATA_SOURCE=cloud,SOLAX_CLOUD_BASE_URL=https://global.solaxcloud.com,OPENAI_MODEL=gpt-4.1-mini \
+  --set-env-vars MCP_TRANSPORT=http,PV_DATA_SOURCE=cloud,SOLAX_CLOUD_BASE_URL=https://global.solaxcloud.com,OPENAI_MODEL=gpt-4.1 \
   --set-secrets MCP_HTTP_AUTH_TOKEN=solax-mcp-http-auth-token:latest,SOLAX_CLOUD_TOKEN_ID=solax-cloud-token-id:latest,SOLAX_CLOUD_WIFI_SN=solax-cloud-wifi-sn:latest,OPENAI_API_KEY=openai-api-key:latest
 ```
 

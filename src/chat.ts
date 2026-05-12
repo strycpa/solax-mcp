@@ -6,7 +6,10 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { z } from "zod";
 
 import type { AppConfig } from "./config.js";
-import { PV_HISTORY_COLUMN_USAGE_FOR_MODEL } from "./history/pv-history-resource.js";
+import {
+  PV_HISTORY_AGGREGATION_GUIDANCE_FOR_MODEL,
+  PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
+} from "./history/pv-history-resource.js";
 
 const chatRequestSchema = z.object({
   message: z.string().trim().min(1).max(2000),
@@ -112,7 +115,7 @@ const queryPvHistoryChatTool: ChatTool = {
   function: {
     name: "query_pv_history",
     description:
-      "Run a constrained BigQuery SELECT over minute-level pv_samples for trends and historical analytics. SQL must reference pv_samples only and MUST include sampled_date in WHERE (partition requirement). SOC column must be battery_soc_percent exactly — never battery_soc. Use column meanings from the system message (same list as MCP resource pv://history-guide). Do not use semicolons, backticks, comments, or UNION. Prefer aggregates by hour/day and filters on sampled_at ranges inside valid sampled_date windows. Combine results with get_pv_status for current conditions.",
+      "Run a constrained BigQuery SELECT over minute-level pv_samples for trends and historical analytics. SQL must reference pv_samples only and MUST include sampled_date in WHERE (partition requirement). SOC column must be battery_soc_percent exactly — never battery_soc. Use column meanings from the system message (same list as MCP resource pv://history-guide). Apply aggregation guidance from the system message: dedupe rows that share the same sampled_at before SUM over *_w columns, or use AVG per time bucket; do not treat raw SUM(power_w) as energy (Wh). Do not use semicolons, backticks, comments, or UNION. Prefer aggregates by hour/day and filters on sampled_at ranges inside valid sampled_date windows. Combine results with get_pv_status for current conditions.",
     parameters: {
       type: "object",
       properties: {
@@ -198,6 +201,9 @@ async function answerChatMessage(
         "",
         "pv_samples columns — what each is for when writing query_pv_history SQL:",
         PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
+        "",
+        "Aggregates, duplicates, power vs energy (Critical for correct totals):",
+        PV_HISTORY_AGGREGATION_GUIDANCE_FOR_MODEL,
       ].join("\n"),
     },
     {

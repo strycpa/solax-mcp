@@ -148,6 +148,16 @@ export const PV_HISTORY_COLUMN_USAGE_FOR_MODEL = PV_HISTORY_COLUMNS.map(
   (column) => `- ${column.name}: ${column.use_for}`,
 ).join("\n");
 
+/**
+ * Minimizes inflated SUMs over power columns when the model drafts BigQuery for chat or MCP clients
+ * that do not load pv://history-guide.
+ */
+export const PV_HISTORY_AGGREGATION_GUIDANCE_FOR_MODEL = [
+  "Minute grain: sampled_at is truncated to whole UTC minutes on ingest, but repeated polls or re-ingestion can still produce multiple rows with the same sampled_at.",
+  "Before SUM over *_w power columns across long windows, deduplicate to one row per minute bucket — e.g. QUALIFY ROW_NUMBER() OVER (PARTITION BY sampled_at ORDER BY ingested_at DESC) = 1 — or use AVG(...) inside GROUP BY sampled_at (or TIMESTAMP_TRUNC(sampled_at, MINUTE)) instead of summing every raw row.",
+  "Values are instantaneous power (W), not energy (Wh). Approximate energy for a bucket needs mean (or integrated) power times duration in hours; summing every duplicate minute sample inflates totals by about the average number of rows per minute.",
+].join("\n");
+
 export const PV_HISTORY_GUIDE_TEXT = JSON.stringify(
   {
     query_tool: "query_pv_history",
@@ -158,11 +168,13 @@ export const PV_HISTORY_GUIDE_TEXT = JSON.stringify(
     critical_sql_identifiers: [
       "Use schema-exact column names only. SOC is stored as battery_soc_percent — there is no battery_soc column.",
       "Timestamps use sampled_at (TIMESTAMP); partitioning uses sampled_date (DATE), usually as UTC calendar date.",
+      "Multiple rows may share the same sampled_at; dedupe or AVG before SUM over *_w columns so report totals are not multiplied by samples-per-minute.",
     ],
     interpretation_hints: [
       "Compare sustained home_load_power_w spikes vs quiet baseline to infer large appliance runs (for example laundry cycles).",
       "Combine rolling SOC with PV generation (pv_power_total_w, battery_power_w) and grid import/export for off-grid feasibility sketches.",
       "Always pair historical aggregates with get_pv_status for current conditions.",
+      "For energy-style questions, treat *_w as power: deduplicate per sampled_at (or average per bucket) then combine with elapsed time; raw SUM(watts) over duplicated minutes is not watthours.",
     ],
     columns: PV_HISTORY_COLUMNS,
   },

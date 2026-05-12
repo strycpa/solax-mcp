@@ -11,7 +11,7 @@ const configSchema = z
     CHAT_MCP_URL: z.string().url().optional(),
     INGEST_AUTH_TOKEN: z.string().min(16).optional(),
     OPENAI_API_KEY: z.string().optional(),
-    OPENAI_MODEL: z.string().min(1).default("gpt-4.1-mini"),
+    OPENAI_MODEL: z.string().min(1).default("gpt-4.1"),
     PV_DATA_SOURCE: z.enum(["modbus", "cloud"]).default("modbus"),
     SOLAX_INVERTER_MODEL: z.string().min(1).default("SolaX Hybrid G4 10k"),
     SOLAX_MODBUS_HOST: z.string().min(1).default("192.168.68.121"),

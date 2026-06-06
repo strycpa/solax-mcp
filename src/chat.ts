@@ -133,6 +133,9 @@ const queryPvHistoryChatTool: ChatTool = {
 
 const chatTools: ChatTool[] = [...baseChatTools, queryPvHistoryChatTool];
 
+/** Upper bound on assistant tool-call rounds before forcing a textual answer. */
+const MAX_TOOL_ITERATIONS = 5;
+
 export async function handleChatRequest(
   config: AppConfig,
   req: IncomingMessage,
@@ -212,50 +215,60 @@ async function answerChatMessage(
     },
   ];
 
-  const firstResponse = await createChatCompletion(config, messages, chatTools);
-  const firstMessage = firstResponse.choices[0]?.message;
-
-  if (firstMessage === undefined) {
-    throw new Error("OpenAI response did not contain a message.");
-  }
-
-  if (firstMessage.tool_calls === undefined || firstMessage.tool_calls.length === 0) {
-    return firstMessage.content ?? "";
-  }
-
-  messages.push({
-    role: "assistant",
-    content: firstMessage.content ?? null,
-    tool_calls: firstMessage.tool_calls,
-  });
-
-  const mcpClient = await createMcpClient(config, req);
+  let mcpClient: Client | undefined;
 
   try {
-    for (const toolCall of firstMessage.tool_calls) {
-      const result = await callMcpTool(
-        mcpClient,
-        toolCall.function.name,
-        toolCall.function.arguments,
-      );
+    for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration += 1) {
+      const response = await createChatCompletion(config, messages, chatTools);
+      const responseMessage = response.choices[0]?.message;
+
+      if (responseMessage === undefined) {
+        throw new Error("OpenAI response did not contain a message.");
+      }
+
+      if (
+        responseMessage.tool_calls === undefined ||
+        responseMessage.tool_calls.length === 0
+      ) {
+        return responseMessage.content ?? "";
+      }
+
       messages.push({
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(result),
+        role: "assistant",
+        content: responseMessage.content ?? null,
+        tool_calls: responseMessage.tool_calls,
       });
+
+      mcpClient ??= await createMcpClient(config, req);
+
+      for (const toolCall of responseMessage.tool_calls) {
+        const result = await callMcpTool(
+          mcpClient,
+          toolCall.function.name,
+          toolCall.function.arguments,
+        );
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
     }
+
+    // Tool-call budget exhausted: force a textual answer without further tools.
+    const finalResponse = await createChatCompletion(config, messages);
+    const finalMessage = finalResponse.choices[0]?.message;
+
+    if (finalMessage === undefined) {
+      throw new Error("OpenAI response did not contain a final message.");
+    }
+
+    return finalMessage.content ?? "";
   } finally {
-    await mcpClient.close();
+    if (mcpClient !== undefined) {
+      await mcpClient.close();
+    }
   }
-
-  const finalResponse = await createChatCompletion(config, messages);
-  const finalMessage = finalResponse.choices[0]?.message;
-
-  if (finalMessage === undefined) {
-    throw new Error("OpenAI response did not contain a final message.");
-  }
-
-  return finalMessage.content ?? "";
 }
 
 async function createChatCompletion(

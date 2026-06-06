@@ -11,9 +11,17 @@ import {
   PV_HISTORY_COLUMN_USAGE_FOR_MODEL,
 } from "./history/pv-history-resource.js";
 
+const chatHistoryMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(8000),
+});
+
 const chatRequestSchema = z.object({
   message: z.string().trim().min(1).max(2000),
+  history: z.array(chatHistoryMessageSchema).max(40).default([]),
 });
+
+type ChatHistoryMessage = z.infer<typeof chatHistoryMessageSchema>;
 
 const toolArgumentsSchema = z.record(z.string(), z.unknown());
 
@@ -161,7 +169,12 @@ export async function handleChatRequest(
   }
 
   try {
-    const answer = await answerChatMessage(config, req, parsedBody.data.message);
+    const answer = await answerChatMessage(
+      config,
+      req,
+      parsedBody.data.message,
+      parsedBody.data.history,
+    );
     writeJson(res, 200, { answer });
   } catch (error: unknown) {
     console.error("Error handling chat request:", error);
@@ -195,6 +208,7 @@ async function answerChatMessage(
   config: AppConfig,
   req: IncomingMessage,
   message: string,
+  history: readonly ChatHistoryMessage[],
 ): Promise<string> {
   const messages: ChatMessage[] = [
     {
@@ -209,6 +223,9 @@ async function answerChatMessage(
         PV_HISTORY_AGGREGATION_GUIDANCE_FOR_MODEL,
       ].join("\n"),
     },
+    ...history.map(
+      (turn): ChatMessage => ({ role: turn.role, content: turn.content }),
+    ),
     {
       role: "user",
       content: message,
@@ -530,6 +547,9 @@ const chatPageHtml = String.raw`<!doctype html>
       const send = document.getElementById("send");
       const messages = document.getElementById("messages");
 
+      const historyMaxMessages = 20;
+      let history = [];
+
       function addMessage(kind, text) {
         const element = document.createElement("div");
         element.className = "message " + kind;
@@ -540,6 +560,7 @@ const chatPageHtml = String.raw`<!doctype html>
 
       function showLogin(message) {
         token = null;
+        history = [];
         localStorage.removeItem(tokenKey);
         chat.classList.add("hidden");
         auth.classList.remove("hidden");
@@ -642,7 +663,7 @@ const chatPageHtml = String.raw`<!doctype html>
               authorization: "Bearer " + token,
               "content-type": "application/json",
             },
-            body: JSON.stringify({ message: text }),
+            body: JSON.stringify({ message: text, history }),
           });
           const data = await response.json();
 
@@ -656,6 +677,15 @@ const chatPageHtml = String.raw`<!doctype html>
           }
 
           addMessage("assistant", data.answer || "(bez odpovědi)");
+          history.push({ role: "user", content: text });
+
+          if (data.answer) {
+            history.push({ role: "assistant", content: data.answer });
+          }
+
+          if (history.length > historyMaxMessages) {
+            history = history.slice(history.length - historyMaxMessages);
+          }
         } catch (error) {
           addMessage("assistant", "Chyba: " + error.message);
         } finally {
